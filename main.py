@@ -1,14 +1,14 @@
 
 def read_input():
-    
+    raise NotImplementedError
 
 
 def decoder():
-    return NotImplementedError
+    raise NotImplementedError
 
 
 def superstringwithexpansion():
-    return NotImplementedError
+    raise NotImplementedError
 
 
 if __name__ == '__main__':
