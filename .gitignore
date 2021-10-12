@@ -5,6 +5,8 @@ __pycache__/
 
 # Pycharm
 .idea/
+#Pipenv
+Pipfile
 
 # C extensions
 *.so
