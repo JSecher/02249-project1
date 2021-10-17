@@ -1,4 +1,17 @@
-import re
+import string
+from itertools import chain
+
+SIGMA = string.ascii_lowercase
+GAMMA = string.ascii_uppercase
+
+
+def superstringwithexpansion():
+    inputs = decoder()
+    if check_inputs(inputs) and clean_inputs(inputs):
+        s, t, r = inputs
+        return naive_solver(s, t, r)
+    else:
+        return None
 
 
 def decoder():
@@ -28,50 +41,106 @@ def decoder():
     return s, t, r
 
 
-def checkSuperString(s):
-    for c in s:
-        if not c in string.ascii_lowercase
-            
-    return True
-
-
-def checkStrings(s, t):
-    return True
-
-
-def checkSubsets(s, r):
-    return True
-
-
-def checkInputs(inputs):
+def check_inputs(inputs):
     s, t, r = inputs
 
-    wellformed = checkSuperString(s) and \
-                 checkStrings(s, t) and \
-                 checkSubsets(s, r)
+    well_formed = check_superString(s) \
+                  and check_subsets(r) \
+                  and check_strings(t, r)
 
-    return wellformed
+    return well_formed
 
 
-def superstringwithexpansion():
-    inputs = decoder()
-    if checkInputs(inputs):
-        s, t, r = inputs
+def check_superString(s):
+    return not contains_letter_outside_alphabets(s, SIGMA)
+
+
+def check_subsets(r):
+    for gamma in r:
+        if gamma not in GAMMA:
+            return False
+
+        for expansion in r[gamma]:
+            if contains_letter_outside_alphabets(expansion, SIGMA):
+                return False
+
+    return True
+
+
+def check_strings(t, r):
+    for t_string in t:
+        if contains_letter_outside_alphabets(t_string, SIGMA, r.keys()):
+            return False
+
+    return True
+
+
+def contains_letter_outside_alphabets(word, *alphabets):
+    all_letters = list(chain(*alphabets))
+    unrecognised_letters = [letter for letter in word if letter not in all_letters]
+    return len(unrecognised_letters) > 0
+
+
+def clean_inputs(inputs):
+    s, t, r = inputs
+    r = remove_impossible_expansions(s, t, r)
+
+    # Check if there is an impossible mapping i.e. empty list in r
+    if [] in r.values():
+        return None
     else:
-        return "NO"
+        return s and t and r
 
-    return "YES"
+
+def remove_impossible_expansions(s, t, r):
+    r = remove_expansions_not_in_s(s, r)
+    # r = remove_expansions_incompatible_with_t(s, t, r)
+    return r
+
+
+def remove_expansions_not_in_s(s, r):
+    for gamma in r:
+        r[gamma] = [expansion for expansion in r[gamma] if expansion in s]
+
+    return r
+
+
+def naive_solver(s, t, r):
+    gammas = list({letter for letter in chain(*t) if letter in GAMMA})
+    for expansion in all_possible_expansions(gammas, r):
+        for word in t:
+            copy = word
+            for i in range(len(gammas)):
+                copy = copy.replace(gammas[i], expansion[i])
+            if copy not in s:
+                break
+        else:
+            return {gammas[i]: expansion[i] for i in range(len(gammas))}
+    return None
+
+
+def all_possible_expansions(letters, expansions):
+    n = len(letters)
+    possible_values = [len(expansions[letter]) for letter in letters]
+    indices = [0 for _ in range(n)]
+
+    yield [expansions[letters[j]][indices[j]] for j in range(n)]
+    while n:
+        for i in reversed(range(n)):
+            indices[i] += 1
+            if indices[i] >= possible_values[i]:
+                indices[i] = 0
+            else:
+                yield [expansions[letters[j]][indices[j]] for j in range(n)]
+                break
+        else:
+            return
 
 
 if __name__ == '__main__':
-
     result = superstringwithexpansion()
-
-    print(result)
-    """
-    if result == "NO":
-        print(result)
+    if not result:
+        print("NO")
     else:
-        for res in result:
-            print(f"{res[0]}:{res[1]}")
-    """
+        for res in sorted(result):
+            print(f"{res}:{result[res]}")
