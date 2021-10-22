@@ -108,6 +108,12 @@ def remove_expansions_not_in_s(s, r):
     return r
 
 
+def remove_expansions_incompatible_with_t(s, t, r):
+    for gamma in r:
+        pass
+    pass
+
+
 def naive_solver(s, t, r):
     gammas = list({letter for letter in chain(*t) if letter in GAMMA})
     for expansion in all_possible_expansions(gammas, r):
@@ -125,7 +131,7 @@ def naive_solver(s, t, r):
 def all_possible_expansions(letters, expansions):
     n = len(letters)
     possible_values = [len(expansions[letter]) for letter in letters]
-    indices = [0 for _ in range(n)]
+    indices = [0] * n
 
     yield [expansions[letters[j]][indices[j]] for j in range(n)]
     while n:
