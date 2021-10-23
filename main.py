@@ -1,8 +1,8 @@
 import string
 from itertools import chain
 
-SIGMA = string.ascii_lowercase
-GAMMA = string.ascii_uppercase
+SIGMA = set(string.ascii_lowercase)
+GAMMA = set(string.ascii_uppercase)
 
 
 def superstringwithexpansion():
@@ -68,17 +68,20 @@ def check_subsets(r):
 
 
 def check_strings(t, r):
+    all_letter = set().union(*(SIGMA, r.keys()))
     for t_string in t:
-        if contains_letter_outside_alphabets(t_string, SIGMA, r.keys()):
+        if contains_letter_outside_alphabets(t_string, all_letter):
             return False
 
     return True
 
 
-def contains_letter_outside_alphabets(word, *alphabets):
-    all_letters = list(chain(*alphabets))
-    unrecognised_letters = [letter for letter in word if letter not in all_letters]
-    return len(unrecognised_letters) > 0
+def contains_letter_outside_alphabets(word, alphabet):
+    for letter in word:
+        if letter not in alphabet:
+            return True
+
+    return False
 
 
 def clean_inputs(inputs):
@@ -105,6 +108,12 @@ def remove_expansions_not_in_s(s, r):
     return r
 
 
+def remove_expansions_incompatible_with_t(s, t, r):
+    for gamma in r:
+        pass
+    pass
+
+
 def naive_solver(s, t, r):
     gammas = list({letter for letter in chain(*t) if letter in GAMMA})
     for expansion in all_possible_expansions(gammas, r):
@@ -122,7 +131,7 @@ def naive_solver(s, t, r):
 def all_possible_expansions(letters, expansions):
     n = len(letters)
     possible_values = [len(expansions[letter]) for letter in letters]
-    indices = [0 for _ in range(n)]
+    indices = [0] * n
 
     yield [expansions[letters[j]][indices[j]] for j in range(n)]
     while n:
