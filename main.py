@@ -5,117 +5,113 @@ SIGMA = set(string.ascii_lowercase)
 GAMMA = set(string.ascii_uppercase)
 
 
-def superstringwithexpansion():
-    inputs = decoder()
-
-    if check_and_clean_inputs(inputs):
-        s, t, r = inputs
-        print(s)
-        for element in t:
-            print(element)
-        for element in r:
-            print(f"{element}: {r[element]}")
-
-        for t_string in t:
-            if len(t_string) > 1:
-                r_pruned = naive_solver(s, [t_string], r)
-                for key, item in r_pruned.items():
-                    if len(item) == 0:
-                        return None
-                    r[key] = item
-
-        r_final = naive_solver(s, t, r)
-        for _, item in r_final.items():
-            if len(item) == 0:
-                return None
-        return r_final
-
-    else:
+def superstring_with_expansion():
+    raw_input = decoder()
+    if raw_input is None:
         return None
+
+    _, _, R_raw = raw_input
+    cleansed_input = clean_input(raw_input)
+    if cleansed_input is None:
+        return None
+
+    s, T, R = cleansed_input
+    if not T or not R:  # The problem is trivially solved
+        return R_raw
+
+    R_pruned = prune_expansions(s, T, R)
+    if R_pruned is None:
+        return None
+
+    R_final = naive_solver_final(s, T, R_pruned)
+    if not R_final:
+        return None
+
+    result = dict()
+    for gamma in R_raw:
+        if gamma in R_final:
+            result[gamma] = R_final[gamma]
+        else:
+            result[gamma] = R_raw[gamma][0]
+
+    return result
 
 
 def decoder():
-    """
-    Reads inputs from stdin
+    raw_input = read_input()
+    if not verify_input(raw_input):
+        return None
 
-    Returns:
-        s : str : Superstring to check against
-        t : list : List of t strings to compute expansions of
-        r : dict : Dictionary of possible expansions
-    """
-    n = int(input())
-    s = str(input())
-    t = []  # list for all t strings
-    r = dict()  # dict for all R sets
-    for _ in range(n):
-        t.append(str(input()))
+    return raw_input
+
+
+def read_input():
+    k = int(input())
+    s = str(input()).strip()
+    T = read_strings(k)
+    R = read_subsets()
+
+    return s, T, R
+
+
+def read_strings(k):
+    T = set()
+    for _ in range(k):
+        T.add(str(input()).strip())
+
+    return list(T)
+
+
+def read_subsets():
+    R = dict()
     while True:
         try:
-            ri = str(input())
-            gamma = ri[0]
-            expansions = ri[2:].split(",")
-            r[gamma] = expansions
+            input_string = str(input())
+            gamma = input_string[0]
+            expansions = {item.strip() for item in input_string[2:].split(",")}
+            R[gamma] = list(expansions)
         except EOFError:
             break
 
-    return s, t, r
+    return R
 
 
-def check_and_clean_inputs(inputs):
-    s, t, r = inputs
+def verify_input(raw_input):
+    s, T, R = raw_input
 
-    well_formed = check_superstring(s) \
-        and check_and_clean_subsets(s, r) \
-        and check_and_clean_strings(s, t, r)
+    well_formed = check_superString(s) \
+        and check_subsets(R) \
+        and check_strings(T, R)
 
     return well_formed
 
 
-def check_superstring(s):
-    return not contains_letter_outside_alphabets(s, SIGMA)
+def check_superString(s):
+    return not contains_letter_outside_alphabet(s, SIGMA)
 
 
-def check_and_clean_subsets(s, r):
-    for gamma in r:
+def check_subsets(R):
+    for gamma in R:
         if gamma not in GAMMA:
             return False
 
-        for expansion in reversed(r[gamma]):
-            if contains_letter_outside_alphabets(expansion, SIGMA):
+        for expansion in R[gamma]:
+            if not expansion or contains_letter_outside_alphabet(expansion, SIGMA):
                 return False
 
-            if expansion not in s:
-                r[gamma].remove(expansion)
-
     return True
 
 
-def check_and_clean_strings(s, t, r):
-    for t_string in t:
-        contains_letter_from_gamma = False
-
-        for letter in t_string:
-            if letter in GAMMA:
-                contains_letter_from_gamma = True
-                if not r[letter]:
-                    return False
-            else:
-                if letter not in SIGMA:
-                    return False
-
-        if not contains_letter_from_gamma and t_string not in s:
+def check_strings(T, R):
+    alphabet = set().union(SIGMA, R.keys())
+    for t in T:
+        if contains_letter_outside_alphabet(t, alphabet):
             return False
 
-    t.sort(key=elements_from_GAMMA)
-
     return True
 
 
-def elements_from_GAMMA(word):
-    return len([letter for letter in word if letter in GAMMA])
-
-
-def contains_letter_outside_alphabets(word, alphabet):
+def contains_letter_outside_alphabet(word, alphabet):
     for letter in word:
         if letter not in alphabet:
             return True
@@ -123,13 +119,70 @@ def contains_letter_outside_alphabets(word, alphabet):
     return False
 
 
-def naive_solver(s, t, r):
-    gammas = list({letter for letter in chain(*t) if letter in GAMMA})
-    accepted_expansions = {g: set() for g in gammas}
+def clean_input(raw_input):
+    s, T, R = raw_input
+    T_cleansed = remove_duplicates_and_valid_strings(s, T)
+    if T_cleansed is None:
+        return None
 
-    for expansion in all_possible_expansions(gammas, r):
-        for word in t:
-            copy = word
+    R_cleansed = remove_superfluous_subsets_and_expansions(s, T_cleansed, R)
+    if R_cleansed is None:
+        return None
+
+    return s, T_cleansed, R_cleansed
+
+
+def remove_duplicates_and_valid_strings(s, T):
+    T_cleansed = set()
+    for t in T:
+        if t not in T_cleansed:
+            if contains_letter_outside_alphabet(t, SIGMA):
+                T_cleansed.add(t)
+            else:
+                if t not in s:
+                    return None
+    T_sorted = sorted(list(T_cleansed), key=number_of_letters_from_GAMMA)
+    return T_sorted
+
+
+def number_of_letters_from_GAMMA(word):
+    return len([letter for letter in word if letter in GAMMA])
+
+
+def remove_superfluous_subsets_and_expansions(s, T, R):
+    R_cleansed = dict()
+    used_gammas = {letter for letter in chain(*T) if letter in GAMMA}
+    for gamma in used_gammas:
+        valid_expansions = [expansion for expansion in R[gamma] if expansion and expansion in s]
+        if not valid_expansions:
+            return None
+        else:
+            R_cleansed[gamma] = valid_expansions
+
+    return R_cleansed
+
+
+def prune_expansions(s, T, R):
+    R_pruned = R.copy()
+    for t in T:
+        valid_expansions = naive_solver(s, [t], R_pruned)
+        if not valid_expansions:
+            return None
+
+        for key, value in valid_expansions.items():
+            if not value:
+                return None
+            R_pruned[key] = value
+
+    return R_pruned
+
+
+def naive_solver(s, T, R):
+    gammas = list({letter for letter in chain(*T) if letter in GAMMA})
+    accepted_expansions = {g: set() for g in gammas}
+    for expansion in all_possible_expansions(gammas, R):
+        for t in T:
+            copy = t
             for i in range(len(gammas)):
                 copy = copy.replace(gammas[i], expansion[i])
             if copy not in s:
@@ -137,10 +190,25 @@ def naive_solver(s, t, r):
         else:
             for i, g in enumerate(gammas):
                 accepted_expansions[g].add(expansion[i])
-            # return {gammas[i]: expansion[i] for i in range(len(gammas))}
+
     for key, item in accepted_expansions.items():
         accepted_expansions[key] = list(item)
     return accepted_expansions
+
+
+def naive_solver_final(s, T, R):
+    gammas = list({letter for letter in chain(*T) if letter in GAMMA})
+    for expansion in all_possible_expansions(gammas, R):
+        for t in T:
+            copy = t
+            for i in range(len(gammas)):
+                copy = copy.replace(gammas[i], expansion[i])
+            if copy not in s:
+                break
+        else:
+            return {gammas[i]: expansion[i] for i in range(len(gammas))}
+
+    return None
 
 
 def all_possible_expansions(letters, expansions):
@@ -162,9 +230,9 @@ def all_possible_expansions(letters, expansions):
 
 
 if __name__ == '__main__':
-    result = superstringwithexpansion()
-    if not result:
+    output = superstring_with_expansion()
+    if not output:
         print("NO")
     else:
-        for res in sorted(result):
-            print(f"{res}:{result[res][0]}")
+        for r in sorted(output):
+            print(f"{r}:{output[r]}")
