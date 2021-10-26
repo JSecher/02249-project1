@@ -9,7 +9,21 @@ def superstringwithexpansion():
     inputs = decoder()
     if check_inputs(inputs) and clean_inputs(inputs):
         s, t, r = inputs
-        return naive_solver(s, t, r)
+
+        for t_string in sorted(t):
+            if len(t_string) > 1:
+                r_pruned = naive_solver(s, [t_string], r)
+                for key, item in r_pruned.items():
+                    if len(item) == 0:
+                        return None
+                    r[key] = item
+
+        r_final = naive_solver(s, t, r)
+        for _, item in r_final.items():
+            if len(item) == 0:
+                return None
+        return r_final
+
     else:
         return None
 
@@ -116,6 +130,7 @@ def remove_expansions_incompatible_with_t(s, t, r):
 
 def naive_solver(s, t, r):
     gammas = list({letter for letter in chain(*t) if letter in GAMMA})
+    accepted_expansions = {g: set() for g in gammas}
     for expansion in all_possible_expansions(gammas, r):
         for word in t:
             copy = word
@@ -124,8 +139,12 @@ def naive_solver(s, t, r):
             if copy not in s:
                 break
         else:
-            return {gammas[i]: expansion[i] for i in range(len(gammas))}
-    return None
+            for i, g in enumerate(gammas):
+                accepted_expansions[g].add(expansion[i])
+            # return {gammas[i]: expansion[i] for i in range(len(gammas))}
+    for key, item in accepted_expansions.items():
+        accepted_expansions[key] = list(item)
+    return accepted_expansions
 
 
 def all_possible_expansions(letters, expansions):
