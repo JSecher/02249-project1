@@ -7,10 +7,16 @@ GAMMA = set(string.ascii_uppercase)
 
 def superstringwithexpansion():
     inputs = decoder()
-    if check_inputs(inputs) and clean_inputs(inputs):
-        s, t, r = inputs
 
-        for t_string in sorted(t):
+    if check_and_clean_inputs(inputs):
+        s, t, r = inputs
+        print(s)
+        for element in t:
+            print(element)
+        for element in r:
+            print(f"{element}: {r[element]}")
+
+        for t_string in t:
             if len(t_string) > 1:
                 r_pruned = naive_solver(s, [t_string], r)
                 for key, item in r_pruned.items():
@@ -55,39 +61,58 @@ def decoder():
     return s, t, r
 
 
-def check_inputs(inputs):
+def check_and_clean_inputs(inputs):
     s, t, r = inputs
 
-    well_formed = check_superString(s) \
-                  and check_subsets(r) \
-                  and check_strings(t, r)
+    well_formed = check_superstring(s) \
+        and check_and_clean_subsets(s, r) \
+        and check_and_clean_strings(s, t, r)
 
     return well_formed
 
 
-def check_superString(s):
+def check_superstring(s):
     return not contains_letter_outside_alphabets(s, SIGMA)
 
 
-def check_subsets(r):
+def check_and_clean_subsets(s, r):
     for gamma in r:
         if gamma not in GAMMA:
             return False
 
-        for expansion in r[gamma]:
+        for expansion in reversed(r[gamma]):
             if contains_letter_outside_alphabets(expansion, SIGMA):
                 return False
 
+            if expansion not in s:
+                r[gamma].remove(expansion)
+
     return True
 
 
-def check_strings(t, r):
-    all_letter = set().union(*(SIGMA, r.keys()))
+def check_and_clean_strings(s, t, r):
     for t_string in t:
-        if contains_letter_outside_alphabets(t_string, all_letter):
+        contains_letter_from_gamma = False
+
+        for letter in t_string:
+            if letter in GAMMA:
+                contains_letter_from_gamma = True
+                if not r[letter]:
+                    return False
+            else:
+                if letter not in SIGMA:
+                    return False
+
+        if not contains_letter_from_gamma and t_string not in s:
             return False
 
+    t.sort(key=elements_from_GAMMA)
+
     return True
+
+
+def elements_from_GAMMA(word):
+    return len([letter for letter in word if letter in GAMMA])
 
 
 def contains_letter_outside_alphabets(word, alphabet):
@@ -98,39 +123,10 @@ def contains_letter_outside_alphabets(word, alphabet):
     return False
 
 
-def clean_inputs(inputs):
-    s, t, r = inputs
-    r = remove_impossible_expansions(s, t, r)
-
-    # Check if there is an impossible mapping i.e. empty list in r
-    if [] in r.values():
-        return None
-    else:
-        return s and t and r
-
-
-def remove_impossible_expansions(s, t, r):
-    r = remove_expansions_not_in_s(s, r)
-    # r = remove_expansions_incompatible_with_t(s, t, r)
-    return r
-
-
-def remove_expansions_not_in_s(s, r):
-    for gamma in r:
-        r[gamma] = [expansion for expansion in r[gamma] if expansion in s]
-
-    return r
-
-
-def remove_expansions_incompatible_with_t(s, t, r):
-    for gamma in r:
-        pass
-    pass
-
-
 def naive_solver(s, t, r):
     gammas = list({letter for letter in chain(*t) if letter in GAMMA})
     accepted_expansions = {g: set() for g in gammas}
+
     for expansion in all_possible_expansions(gammas, r):
         for word in t:
             copy = word
@@ -171,4 +167,4 @@ if __name__ == '__main__':
         print("NO")
     else:
         for res in sorted(result):
-            print(f"{res}:{result[res]}")
+            print(f"{res}:{result[res][0]}")
